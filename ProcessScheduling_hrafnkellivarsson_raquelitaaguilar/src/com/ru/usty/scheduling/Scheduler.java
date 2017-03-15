@@ -1,5 +1,7 @@
 package com.ru.usty.scheduling;
 
+import java.util.ArrayList;
+
 import com.ru.usty.scheduling.process.ProcessExecution;
 
 public class Scheduler {
@@ -11,7 +13,8 @@ public class Scheduler {
 	/**
 	 * Add any objects and variables here (if needed)
 	 */
-
+	
+	ArrayList<Integer> processQueue;
 
 	/**
 	 * DO NOT CHANGE DEFINITION OF OPERATION
@@ -42,6 +45,7 @@ public class Scheduler {
 			/**
 			 * Add your policy specific initialization code here (if needed)
 			 */
+			processQueue = new ArrayList<Integer>();
 			break;
 		case RR:	//Round robin
 			System.out.println("Starting new scheduling task: Round robin, quantum = " + quantum);
@@ -89,6 +93,9 @@ public class Scheduler {
 		/**
 		 * Add scheduling code here
 		 */
+		System.out.println("Process added, ID:" + processID);
+		
+		
 		switch(policy) {
 		case FCFS:	//First-come-first-served
 			processAddedFCFS(processID);
@@ -121,6 +128,8 @@ public class Scheduler {
 		/**
 		 * Add scheduling code here
 		 */
+		System.out.println("Process finished, ID:" + processID);
+		
 		switch(policy) {
 		case FCFS:	//First-come-first-served
 			processFinishedFCFS(processID);
@@ -150,6 +159,11 @@ public class Scheduler {
 	
 	private void processAddedFCFS(int processID) {
 		//TODO
+		processQueue.add(processID); //add new process to queue
+		if(processQueue.size() <= 1) { //if its the only item in the queue process it right away
+			switchToProcess(processID);
+		}
+		
 	}
 	
 	private void processAddedRR(int processID) {
@@ -178,6 +192,10 @@ public class Scheduler {
 	
 	private void processFinishedFCFS(int processID) {
 		//TODO
+		processQueue.remove(0); //remove the process from the queue
+		if(!processQueue.isEmpty()) { //if there are more processes waiting, process them.
+			switchToProcess(processQueue.get(0));
+		}
 	}
 	
 	private void processFinishedRR(int processID) {
@@ -200,5 +218,13 @@ public class Scheduler {
 		//TODO
 	}	
 	
+	/////////////////////////////////////////////////
+	/// OTHER HELPER FUNCTIONS
+	//////////////////////////////////////////////////
+	
+	private void switchToProcess(int processID) {
+		System.out.println("Switching to process ID:" + processID);
+		processExecution.switchToProcess(processID);
+	}
 	
 }
