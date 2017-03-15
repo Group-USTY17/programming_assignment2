@@ -89,6 +89,27 @@ public class Scheduler {
 		/**
 		 * Add scheduling code here
 		 */
+		switch(policy) {
+		case FCFS:	//First-come-first-served
+			processAddedFCFS(processID);
+			break;
+		case RR:	//Round robin
+			processAddedRR(processID);
+			break;
+		case SPN:	//Shortest process next
+			processAddedSPN(processID);
+			break;
+		case SRT:	//Shortest remaining time
+			processAddedSRT(processID);
+			break;
+		case HRRN:	//Highest response ratio next
+			processAddedHRRN(processID);
+			break;
+		case FB:	//Feedback
+			processAddedFB(processID);
+			break;
+		}
+		
 
 	}
 
@@ -100,6 +121,84 @@ public class Scheduler {
 		/**
 		 * Add scheduling code here
 		 */
+		switch(policy) {
+		case FCFS:	//First-come-first-served
+			processFinishedFCFS(processID);
+			break;
+		case RR:	//Round robin
+			processFinishedRR(processID);
+			break;
+		case SPN:	//Shortest process next
+			processFinishedSPN(processID);
+			break;
+		case SRT:	//Shortest remaining time
+			processFinishedSRT(processID);
+			break;
+		case HRRN:	//Highest response ratio next
+			processFinishedHRRN(processID);
+			break;
+		case FB:	//Feedback
+			processFinishedFB(processID);
+			break;
+		}
 
 	}
+	
+	////////////////////////////////////////////////////////
+	//PROCESS ADDED PRIVATE FUNCTIONS
+	///////////////////////////////////////////////////////
+	
+	private void processAddedFCFS(int processID) {
+		//TODO
+	}
+	
+	private void processAddedRR(int processID) {
+		//TODO
+	}
+	
+	private void processAddedSPN(int processID) {
+		//TODO
+	}
+	
+	private void processAddedSRT(int processID) {
+		//TODO
+	}
+	
+	private void processAddedHRRN(int processID) {
+		//TODO
+	}
+	
+	private void processAddedFB(int processID) {
+		//TODO
+	}
+	
+	////////////////////////////////////////////////////////
+	//PROCESS FINISHED PRIVATE FUNCTIONS
+	///////////////////////////////////////////////////////
+	
+	private void processFinishedFCFS(int processID) {
+		//TODO
+	}
+	
+	private void processFinishedRR(int processID) {
+		//TODO
+	}
+	
+	private void processFinishedSPN(int processID) {
+		//TODO
+	}
+	
+	private void processFinishedSRT(int processID) {
+		//TODO
+	}
+	
+	private void processFinishedHRRN(int processID) {
+		//TODO
+	}
+	
+	private void processFinishedFB(int processID) {
+		//TODO
+	}	
+	
+	
 }
