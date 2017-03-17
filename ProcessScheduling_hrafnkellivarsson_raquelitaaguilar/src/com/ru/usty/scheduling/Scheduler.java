@@ -1,7 +1,12 @@
 package com.ru.usty.scheduling;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Timer;
+import java.util.TimerTask;
 
+import com.ru.usty.scheduling.process.Process;
 import com.ru.usty.scheduling.process.ProcessExecution;
 
 public class Scheduler {
@@ -9,92 +14,63 @@ public class Scheduler {
 	ProcessExecution processExecution;
 	Policy policy;
 	int quantum;
+	Timer currentTime;
+	private final ArrayList<Process> mProcesses = new ArrayList<Process>();
 
-	/**
-	 * Add any objects and variables here (if needed)
-	 */
 	
-	ArrayList<Integer> processQueue;
-
-	/**
-	 * DO NOT CHANGE DEFINITION OF OPERATION
-	 */
 	public Scheduler(ProcessExecution processExecution) {
 		this.processExecution = processExecution;
-
-		/**
-		 * Add general initialization code here (if needed)
-		 */
 	}
 
 	/**
 	 * DO NOT CHANGE DEFINITION OF OPERATION
 	 */
 	public void startScheduling(Policy policy, int quantum) {
-
 		this.policy = policy;
 		this.quantum = quantum;
-
-		/**
-		 * Add general initialization code here (if needed)
-		 */
 
 		switch(policy) {
 		case FCFS:	//First-come-first-served
 			System.out.println("Starting new scheduling task: First-come-first-served");
-			/**
-			 * Add your policy specific initialization code here (if needed)
-			 */
-			processQueue = new ArrayList<Integer>();
+			mProcesses.clear();
 			break;
+			
 		case RR:	//Round robin
 			System.out.println("Starting new scheduling task: Round robin, quantum = " + quantum);
-			/**
-			 * Add your policy specific initialization code here (if needed)
-			 */
+			mProcesses.clear();
 			break;
+			
 		case SPN:	//Shortest process next
+			if (currentTime != null) {
+				currentTime.cancel();
+			}
 			System.out.println("Starting new scheduling task: Shortest process next");
-			/**
-			 * Add your policy specific initialization code here (if needed)
-			 */
+			mProcesses.clear();
 			break;
+			
 		case SRT:	//Shortest remaining time
 			System.out.println("Starting new scheduling task: Shortest remaining time");
-			/**
-			 * Add your policy specific initialization code here (if needed)
-			 */
+			mProcesses.clear();
 			break;
+			
 		case HRRN:	//Highest response ratio next
 			System.out.println("Starting new scheduling task: Highest response ratio next");
-			/**
-			 * Add your policy specific initialization code here (if needed)
-			 */
+			mProcesses.clear();
 			break;
+			
 		case FB:	//Feedback
 			System.out.println("Starting new scheduling task: Feedback, quantum = " + quantum);
-			/**
-			 * Add your policy specific initialization code here (if needed)
-			 */
+			mProcesses.clear();
 			break;
 		}
-
-		/**
-		 * Add general scheduling or initialization code here (if needed)
-		 */
-
 	}
 
 	/**
 	 * DO NOT CHANGE DEFINITION OF OPERATION
 	 */
 	public void processAdded(int processID) {
-
-		/**
-		 * Add scheduling code here
-		 */
-		System.out.println("Process added, ID:" + processID);
 		
+		System.out.println("Process added, ID:" + processID);
 		
 		switch(policy) {
 		case FCFS:	//First-come-first-served
@@ -116,18 +92,13 @@ public class Scheduler {
 			processAddedFB(processID);
 			break;
 		}
-		
-
 	}
 
 	/**
 	 * DO NOT CHANGE DEFINITION OF OPERATION
 	 */
 	public void processFinished(int processID) {
-
-		/**
-		 * Add scheduling code here
-		 */
+		
 		System.out.println("Process finished, ID:" + processID);
 		
 		switch(policy) {
@@ -150,55 +121,107 @@ public class Scheduler {
 			processFinishedFB(processID);
 			break;
 		}
-
 	}
 	
 	////////////////////////////////////////////////////////
-	//PROCESS ADDED PRIVATE FUNCTIONS
+	// FCFS - PRIVATE FUNCTIONS
 	///////////////////////////////////////////////////////
 	
 	private void processAddedFCFS(int processID) {
-		//TODO
-		processQueue.add(processID); //add new process to queue
-		if(processQueue.size() <= 1) { //if its the only item in the queue process it right away
+		System.out.println("FCFS process starting ID: " + processID);
+		
+		Process process = new Process(processID, quantum);
+		mProcesses.add(process);
+		if(mProcesses.size() == 1) {
 			switchToProcess(processID);
 		}
+	}
+	
+	private void processFinishedFCFS(int processID) {
+		System.out.println("FCFS process finished ID: " + processID);
 		
-	}
-	
-	private void processAddedRR(int processID) {
-		//TODO
-	}
-	
-	private void processAddedSPN(int processID) {
-		//TODO
-	}
-	
-	private void processAddedSRT(int processID) {
-		//TODO
-	}
-	
-	private void processAddedHRRN(int processID) {
-		//TODO
-	}
-	
-	private void processAddedFB(int processID) {
-		//TODO
+		removeProcessById(processID);
+		if(!mProcesses.isEmpty()) {
+			switchToProcess(mProcesses.get(0).getID());
+		}
 	}
 	
 	////////////////////////////////////////////////////////
-	//PROCESS FINISHED PRIVATE FUNCTIONS
+	// RR - PRIVATE FUNCTIONS
 	///////////////////////////////////////////////////////
 	
-	private void processFinishedFCFS(int processID) {
-		//TODO
-		processQueue.remove(0); //remove the process from the queue
-		if(!processQueue.isEmpty()) { //if there are more processes waiting, process them.
-			switchToProcess(processQueue.get(0));
+	private Process mCurrentProcess;
+	
+	private void processAddedRR(int processID) {
+		System.out.println("RR process starting ID: " + processID);
+		
+		Process process = new Process(processID, quantum);
+		mProcesses.add(process);
+		if(mProcesses.size() == 1) {
+			mCurrentProcess = process;
+			switchToProcess(processID);
+			scheduleTimerRR();
 		}
 	}
 	
 	private void processFinishedRR(int processID) {
+		System.out.println("RR process finished ID: " + processID);
+		Process process = getProcessById(processID);
+		int processIndex = mProcesses.indexOf(process);
+		
+		removeProcessById(processID);
+		
+		if (mProcesses.isEmpty()) {
+			return;
+		}
+		if (processIndex >= mProcesses.size()) {
+			processIndex = 0;
+		}
+		mCurrentProcess = mProcesses.get(processIndex);
+		
+		switchToProcess(mCurrentProcess.getID());
+		scheduleTimerRR();
+	}
+	
+	// 
+	private void scheduleTimerRR() {
+		if (currentTime != null) {
+			currentTime.cancel();
+		}
+		currentTime = new Timer();
+		currentTime.scheduleAtFixedRate(new TimerTask() {
+			@Override
+			public void run() {
+				if (mProcesses.isEmpty()) {
+					return;
+				}
+				if(mCurrentProcess != null){
+					getNextProcessRR();
+				} else{
+					mCurrentProcess = mProcesses.get(0);
+				}
+				switchToProcess(mCurrentProcess.getID());
+			}
+		}, 0, quantum);
+	}
+	
+	private void getNextProcessRR(){
+		int currentIndex = mProcesses.indexOf(mCurrentProcess) + 1;
+		if (currentIndex >= mProcesses.size()) {
+			currentIndex = 0;
+		}
+		if(!mProcesses.isEmpty()){
+			mCurrentProcess = mProcesses.get(currentIndex);
+		} else{
+			mCurrentProcess = null;
+		}
+	}
+	
+	////////////////////////////////////////////////////////
+	// SPN - PRIVATE FUNCTIONS
+	///////////////////////////////////////////////////////
+	
+	private void processAddedSPN(int processID) {
 		//TODO
 	}
 	
@@ -206,7 +229,23 @@ public class Scheduler {
 		//TODO
 	}
 	
+	////////////////////////////////////////////////////////
+	// SRT - PRIVATE FUNCTIONS
+	///////////////////////////////////////////////////////
+	
+	private void processAddedSRT(int processID) {
+		//TODO
+	}
+	
 	private void processFinishedSRT(int processID) {
+		//TODO
+	}
+	
+	////////////////////////////////////////////////////////
+	// HRRN - PRIVATE FUNCTIONS
+	///////////////////////////////////////////////////////
+	
+	private void processAddedHRRN(int processID) {
 		//TODO
 	}
 	
@@ -214,17 +253,51 @@ public class Scheduler {
 		//TODO
 	}
 	
+	
+	////////////////////////////////////////////////////////
+	// FB - PRIVATE FUNCTIONS
+	///////////////////////////////////////////////////////
+	
+	private void processAddedFB(int processID) {
+		//TODO
+	}
+	
 	private void processFinishedFB(int processID) {
 		//TODO
 	}	
+	
 	
 	/////////////////////////////////////////////////
 	/// OTHER HELPER FUNCTIONS
 	//////////////////////////////////////////////////
 	
+	// Switch between processes
 	private void switchToProcess(int processID) {
 		System.out.println("Switching to process ID:" + processID);
 		processExecution.switchToProcess(processID);
+	}
+	
+	// Get the process by ID
+	private Process getProcessById(int processId) {
+		for (Process process : mProcesses) {
+			if (process.getID() == processId) {
+				return process;
+			}
+		}
+		return null;
+	}
+	
+	// Removing the process by its ID
+	private void removeProcessById(int processId) {
+		Process process;
+		Iterator<Process> iterator = mProcesses.iterator();
+		while (iterator.hasNext()) {
+			process = iterator.next();
+			if (process.getID() == processId) {
+				iterator.remove();
+				return;
+			}
+		}
 	}
 	
 }
