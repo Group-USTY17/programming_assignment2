@@ -298,12 +298,46 @@ public class Scheduler {
 	///////////////////////////////////////////////////////
 	
 	private void processAddedHRRN(int processID) {
-		//TODO
+		Process process = new Process(processID, quantum);
+		mProcesses.add(process);
+		if(mProcesses.size() == 1) {
+			switchToProcess(processID);
+		}
 	}
 	
 	private void processFinishedHRRN(int processID) {
-		//TODO
+		removeProcessById(processID);
+		if(!mProcesses.isEmpty()) {
+			switchToProcess(getHRRNPriorityID());
+		}
 	}
+	
+	private long calculateHRRNPriority(int processID) {
+		long waitingTime = processExecution.getProcessInfo(processID).elapsedWaitingTime;
+		long serviceTime = processExecution.getProcessInfo(processID).totalServiceTime;
+		
+		return (waitingTime + serviceTime) / serviceTime;
+	}
+	
+	private int getHRRNPriorityID() {
+		int priorityProcessID = -1, processID;
+		long highestPriority = Long.MIN_VALUE, currentPriority;
+		Process process;
+		
+		Iterator<Process> iterator = mProcesses.iterator();
+		while (iterator.hasNext()) {
+			process = iterator.next();
+			processID = process.getID();
+			currentPriority = calculateHRRNPriority(processID);
+			
+			if (currentPriority > highestPriority) {
+				highestPriority = currentPriority;
+				priorityProcessID = processID;
+			}
+		}
+		
+		return priorityProcessID;
+	}	
 	
 	
 	////////////////////////////////////////////////////////
