@@ -149,8 +149,6 @@ public class Scheduler {
 	private Process mCurrentProcess;
 	
 	private void processAddedRR(int processID) {
-		System.out.println("RR process starting ID: " + processID);
-		
 		Process process = new Process(processID, quantum);
 		mProcesses.add(process);
 		if(mProcesses.size() == 1) {
@@ -161,7 +159,6 @@ public class Scheduler {
 	}
 	
 	private void processFinishedRR(int processID) {
-		System.out.println("RR process finished ID: " + processID);
 		Process process = getProcessById(processID);
 		int processIndex = mProcesses.indexOf(process);
 		
@@ -228,11 +225,11 @@ public class Scheduler {
 	private void processFinishedSPN(int processID) {
 		removeProcessById(processID);
 		if(!mProcesses.isEmpty()) {
-			switchToProcess(getSmallestProcess());
+			switchToProcess(getShortestProcessID());
 		}
 	}
 	
-	private int getSmallestProcess() {
+	private int getShortestProcessID() {
 		int shortestProcessID = -1, processID;
 		long shortestServiceTime = Long.MAX_VALUE, currentServiceTime;
 		Process process;
@@ -257,11 +254,43 @@ public class Scheduler {
 	///////////////////////////////////////////////////////
 	
 	private void processAddedSRT(int processID) {
-		//TODO
+		Process process = new Process(processID, quantum);
+		mProcesses.add(process);
+		if(mProcesses.size() == 1) {
+			switchToProcess(processID);
+		}
+		else if(getShortestRemainingTimeID() == processID) {
+			switchToProcess(processID);
+		}
 	}
 	
 	private void processFinishedSRT(int processID) {
-		//TODO
+		removeProcessById(processID);
+		if(!mProcesses.isEmpty()) {
+			switchToProcess(getShortestRemainingTimeID());
+		}
+	}
+	
+	private int getShortestRemainingTimeID() {
+		int shortestProcessID = -1, processID;
+		long shortestRemainingTime = Long.MAX_VALUE, currentRemainingTime, currentTotalServiceTime, currentElapsedExecutionTime;
+		Process process;
+		
+		Iterator<Process> iterator = mProcesses.iterator();
+		while (iterator.hasNext()) {
+			process = iterator.next();
+			processID = process.getID();
+			currentTotalServiceTime = processExecution.getProcessInfo(processID).totalServiceTime;
+			currentElapsedExecutionTime = processExecution.getProcessInfo(processID).elapsedExecutionTime;
+			currentRemainingTime = currentTotalServiceTime - currentElapsedExecutionTime;
+			
+			if (currentRemainingTime < shortestRemainingTime) {
+				shortestRemainingTime = currentRemainingTime;
+				shortestProcessID = processID;
+			}
+		}
+		
+		return shortestProcessID;
 	}
 	
 	////////////////////////////////////////////////////////
