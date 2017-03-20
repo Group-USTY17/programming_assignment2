@@ -127,9 +127,7 @@ public class Scheduler {
 	// FCFS - PRIVATE FUNCTIONS
 	///////////////////////////////////////////////////////
 	
-	private void processAddedFCFS(int processID) {
-		System.out.println("FCFS process starting ID: " + processID);
-		
+	private void processAddedFCFS(int processID) {		
 		Process process = new Process(processID, quantum);
 		mProcesses.add(process);
 		if(mProcesses.size() == 1) {
@@ -138,8 +136,6 @@ public class Scheduler {
 	}
 	
 	private void processFinishedFCFS(int processID) {
-		System.out.println("FCFS process finished ID: " + processID);
-		
 		removeProcessById(processID);
 		if(!mProcesses.isEmpty()) {
 			switchToProcess(mProcesses.get(0).getID());
@@ -222,11 +218,38 @@ public class Scheduler {
 	///////////////////////////////////////////////////////
 	
 	private void processAddedSPN(int processID) {
-		//TODO
+		Process process = new Process(processID, quantum);
+		mProcesses.add(process);
+		if(mProcesses.size() == 1) {
+			switchToProcess(processID);
+		}
 	}
 	
 	private void processFinishedSPN(int processID) {
-		//TODO
+		removeProcessById(processID);
+		if(!mProcesses.isEmpty()) {
+			switchToProcess(getSmallestProcess());
+		}
+	}
+	
+	private int getSmallestProcess() {
+		int shortestProcessID = -1, processID;
+		long shortestServiceTime = Long.MAX_VALUE, currentServiceTime;
+		Process process;
+		
+		Iterator<Process> iterator = mProcesses.iterator();
+		while (iterator.hasNext()) {
+			process = iterator.next();
+			processID = process.getID();
+			currentServiceTime = processExecution.getProcessInfo(processID).totalServiceTime;
+			
+			if (currentServiceTime < shortestServiceTime) {
+				shortestServiceTime = currentServiceTime;
+				shortestProcessID = processID;
+			}
+		}
+		
+		return shortestProcessID;
 	}
 	
 	////////////////////////////////////////////////////////
