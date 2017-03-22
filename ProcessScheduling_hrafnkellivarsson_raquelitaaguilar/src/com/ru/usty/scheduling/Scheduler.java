@@ -10,16 +10,23 @@ import com.ru.usty.scheduling.process.Process;
 import com.ru.usty.scheduling.process.ProcessExecution;
 
 public class Scheduler {
+	
+	public static final int FEEDBACK_QUEUE_LEVEL = 7;
 
 	ProcessExecution processExecution;
 	Policy policy;
 	int quantum;
 	Timer currentTime;
-	long startSchedulingTime;
+	
+	private long startSchedulingTime;
+	private int currentFBLevel;
+	private int processCount;
+	private Process mCurrentProcess;
 	private final ArrayList<Process> mProcesses = new ArrayList<Process>();
+	private final ArrayList<ArrayList<Process>> feedbackQueue = new ArrayList<ArrayList<Process>>(FEEDBACK_QUEUE_LEVEL);
 	private final ArrayList<Long> turnaroundTimes = new ArrayList<Long>();
 	private final ArrayList<Long> responseTimes = new ArrayList<Long>();
-	HashMap<Integer, Long> arrivalTimes = new HashMap<Integer, Long>();
+	private HashMap<Integer, Long> arrivalTimes = new HashMap<Integer, Long>();
 
 	
 	public Scheduler(ProcessExecution processExecution) {
@@ -50,7 +57,9 @@ public class Scheduler {
 			responseTimes.clear();
 		}
 		
-
+		arrivalTimes.clear();
+		mProcesses.clear();
+		
 		switch(policy) {
 		case FCFS:	//First-come-first-served
 			System.out.println("Starting new scheduling task: First-come-first-served");
@@ -73,12 +82,10 @@ public class Scheduler {
 			break;
 			
 		case FB:	//Feedback
-			System.out.println("Starting new scheduling task: Feedback, quantum = " + quantum);			
+			System.out.println("Starting new scheduling task: Feedback, quantum = " + quantum);
+			initFBQueue();
 			break;
 		}
-		
-		arrivalTimes.clear();
-		mProcesses.clear();
 		
 	}
 
@@ -169,8 +176,6 @@ public class Scheduler {
 	// RR - PRIVATE FUNCTIONS
 	///////////////////////////////////////////////////////
 	
-	private Process mCurrentProcess;
-	
 	private void processAddedRR(int processID) {
 		Process process = new Process(processID, quantum);
 		mProcesses.add(process);
@@ -182,8 +187,6 @@ public class Scheduler {
 	}
 	
 	private void processFinishedRR(int processID) {
-		System.out.println("RR process finished ID: " + processID);
-
 		int nextProcessIndex;
 		if (mCurrentProcess != null && mCurrentProcess.getID() == processID) {
 			nextProcessIndex = mProcesses.indexOf(mCurrentProcess);
@@ -377,11 +380,99 @@ public class Scheduler {
 	
 	private void processAddedFB(int processID) {
 		//TODO
+		Process process = new Process(processID, quantum);
+		addToFBQueue(process, 0);
+		processCount++;
+		if(processCount == 1) {
+			mCurrentProcess = process;
+			switchToProcess(processID);
+			scheduleTimerFB();
+		}
 	}
 	
 	private void processFinishedFB(int processID) {
-		//TODO
-	}	
+		//TODO		
+		removeProcessByID_FB(processID);
+		processCount--;
+		
+		getNextProcessFB();
+		if(mCurrentProcess != null) {
+			switchToProcess(mCurrentProcess.getID());
+			scheduleTimerFB();
+		}
+	}
+	
+	private void scheduleTimerFB() {
+		if (currentTime != null) {
+			currentTime.cancel();
+		}
+		currentTime = new Timer();
+		currentTime.scheduleAtFixedRate(new TimerTask() {
+			@Override
+			public void run() {
+				if (feedbackQueue.isEmpty()) {
+					return;
+				}
+				
+				downgradeProcess(mCurrentProcess);
+				getNextProcessFB();
+				if(mCurrentProcess == null) {
+					return;
+				}
+				System.out.println("Next process #" + mCurrentProcess.getID() + ", at level:" + currentFBLevel);
+				switchToProcess(mCurrentProcess.getID());
+			}
+		}, 0, quantum);
+	}
+	
+	private void getNextProcessFB(){
+		int levelDepth = 0;
+		for(ArrayList<Process> level : feedbackQueue) {
+			if(!level.isEmpty()) {
+				mCurrentProcess = level.get(0);
+				currentFBLevel = levelDepth;
+				return;
+			}
+			levelDepth++;
+		}
+		
+		currentFBLevel = 0;
+		mCurrentProcess = null;
+	}
+	
+	private void addToFBQueue(Process process, int level) {
+		feedbackQueue.get(level).add(process);
+	}
+	
+	private void downgradeProcess(Process process) {
+		int nextLevel = currentFBLevel+1;
+		if(nextLevel >= FEEDBACK_QUEUE_LEVEL-1) {
+			System.out.println("Cannot downgrade #" + process.getID() + " further");
+			nextLevel = FEEDBACK_QUEUE_LEVEL-1;
+		}
+		feedbackQueue.get(currentFBLevel).remove(process);
+		feedbackQueue.get(nextLevel).add(process);
+	}
+	
+	private void initFBQueue() {
+		currentFBLevel = 0;
+		processCount = 0;
+		for(int i = 0; i < FEEDBACK_QUEUE_LEVEL; i++) {
+			feedbackQueue.add(new ArrayList<Process>());
+		}
+	}
+	
+	private void removeProcessByID_FB(int processID) {
+		Process process;
+		Iterator<Process> iterator = feedbackQueue.get(currentFBLevel).iterator();
+		while (iterator.hasNext()) {
+			process = iterator.next();
+			if (process.getID() == processID) {
+				iterator.remove();
+				return;
+			}
+		}
+	}
 	
 	
 	/////////////////////////////////////////////////
