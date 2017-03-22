@@ -16,6 +16,7 @@ public class Scheduler {
 	int quantum;
 	Timer currentTime;
 	private final ArrayList<Process> mProcesses = new ArrayList<Process>();
+	HashMap<Integer, Long> times = new HashMap<Integer, Long>();
 
 	
 	public Scheduler(ProcessExecution processExecution) {
@@ -32,11 +33,13 @@ public class Scheduler {
 		switch(policy) {
 		case FCFS:	//First-come-first-served
 			System.out.println("Starting new scheduling task: First-come-first-served");
+			times.clear();
 			mProcesses.clear();
 			break;
 			
 		case RR:	//Round robin
 			System.out.println("Starting new scheduling task: Round robin, quantum = " + quantum);
+			times.clear();
 			mProcesses.clear();
 			break;
 			
@@ -45,6 +48,7 @@ public class Scheduler {
 				currentTime.cancel();
 			}
 			System.out.println("Starting new scheduling task: Shortest process next");
+			times.clear();
 			mProcesses.clear();
 			break;
 			
@@ -71,6 +75,9 @@ public class Scheduler {
 	public void processAdded(int processID) {
 		
 		System.out.println("Process added, ID:" + processID);
+		
+		// Arrival time
+		times.put(processID, System.currentTimeMillis());
 		
 		switch(policy) {
 		case FCFS:	//First-come-first-served
@@ -100,6 +107,12 @@ public class Scheduler {
 	public void processFinished(int processID) {
 		
 		System.out.println("Process finished, ID:" + processID);
+		// Completion time
+		long completionTime = System.currentTimeMillis(); 
+		// Turnaround time
+		long elapsed = completionTime - times.get(processID);
+		
+		System.out.println("process " + processID + " turnaround time = " + elapsed);
 		
 		switch(policy) {
 		case FCFS:	//First-come-first-served
@@ -159,20 +172,28 @@ public class Scheduler {
 	}
 	
 	private void processFinishedRR(int processID) {
-		Process process = getProcessById(processID);
-		int processIndex = mProcesses.indexOf(process);
+		System.out.println("RR process finished ID: " + processID);
+
+		int nextProcessIndex;
+		if (mCurrentProcess != null && mCurrentProcess.getID() == processID) {
+			nextProcessIndex = mProcesses.indexOf(mCurrentProcess);
+		} else {
+			Process process = getProcessById(processID);
+			nextProcessIndex = mProcesses.indexOf(process);
+		}
 		
 		removeProcessById(processID);
 		
-		if (mProcesses.isEmpty()) {
-			return;
+		if (!mProcesses.isEmpty()) {
+			if (nextProcessIndex >= mProcesses.size()) {
+				nextProcessIndex = 0;
+			}
+			
+			mCurrentProcess = mProcesses.get(nextProcessIndex);
+			switchToProcess(mCurrentProcess.getID());
+		} else {
+			mCurrentProcess = null;
 		}
-		if (processIndex >= mProcesses.size()) {
-			processIndex = 0;
-		}
-		mCurrentProcess = mProcesses.get(processIndex);
-		
-		switchToProcess(mCurrentProcess.getID());
 		scheduleTimerRR();
 	}
 	
