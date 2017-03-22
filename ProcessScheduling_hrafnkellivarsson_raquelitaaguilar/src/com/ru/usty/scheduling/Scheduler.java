@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.Semaphore;
 
 import com.ru.usty.scheduling.process.Process;
 import com.ru.usty.scheduling.process.ProcessExecution;
@@ -27,6 +28,7 @@ public class Scheduler {
 	private final ArrayList<Long> turnaroundTimes = new ArrayList<Long>();
 	private final ArrayList<Long> responseTimes = new ArrayList<Long>();
 	private HashMap<Integer, Long> arrivalTimes = new HashMap<Integer, Long>();
+	private final Semaphore processFinishedMutex = new Semaphore(1);
 
 	
 	public Scheduler(ProcessExecution processExecution) {
@@ -187,6 +189,7 @@ public class Scheduler {
 	}
 	
 	private void processFinishedRR(int processID) {
+		currentTime.cancel();
 		removeProcessById(processID);
 		
 		if (!mProcesses.isEmpty()) {
@@ -372,9 +375,10 @@ public class Scheduler {
 	}
 	
 	private void processFinishedFB(int processID) {	
+		currentTime.cancel();
 		removeProcessByID_FB(processID);
 		processCount--;
-		
+				
 		getNextProcessFB();
 		if(mCurrentProcess != null) {
 			switchToProcess(mCurrentProcess.getID());
