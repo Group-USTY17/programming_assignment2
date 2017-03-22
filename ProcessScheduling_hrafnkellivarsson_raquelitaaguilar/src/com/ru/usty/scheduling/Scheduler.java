@@ -2,12 +2,9 @@ package com.ru.usty.scheduling;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.Semaphore;
 
-import com.ru.usty.scheduling.process.Process;
 import com.ru.usty.scheduling.process.ProcessExecution;
 
 public class Scheduler {
@@ -22,13 +19,12 @@ public class Scheduler {
 	private long startSchedulingTime;
 	private int currentFBLevel;
 	private int processCount;
-	private Process mCurrentProcess;
-	private final ArrayList<Process> mProcesses = new ArrayList<Process>();
-	private final ArrayList<ArrayList<Process>> feedbackQueue = new ArrayList<ArrayList<Process>>(FEEDBACK_QUEUE_LEVEL);
+	private int mCurrentProcess;
+	private final ArrayList<Integer> mProcesses = new ArrayList<Integer>();
+	private final ArrayList<ArrayList<Integer>> feedbackQueue = new ArrayList<ArrayList<Integer>>(FEEDBACK_QUEUE_LEVEL);
 	private final ArrayList<Long> turnaroundTimes = new ArrayList<Long>();
 	private final ArrayList<Long> responseTimes = new ArrayList<Long>();
 	private HashMap<Integer, Long> arrivalTimes = new HashMap<Integer, Long>();
-	private final Semaphore processFinishedMutex = new Semaphore(1);
 
 	
 	public Scheduler(ProcessExecution processExecution) {
@@ -160,17 +156,16 @@ public class Scheduler {
 	///////////////////////////////////////////////////////
 	
 	private void processAddedFCFS(int processID) {		
-		Process process = new Process(processID, quantum);
-		mProcesses.add(process);
+		mProcesses.add(processID);
 		if(mProcesses.size() == 1) {
 			switchToProcess(processID);
 		}
 	}
 	
 	private void processFinishedFCFS(int processID) {
-		removeProcessById(processID);
+		removeProcessByID(processID);
 		if(!mProcesses.isEmpty()) {
-			switchToProcess(mProcesses.get(0).getID());
+			switchToProcess(mProcesses.get(0));
 		}
 	}
 	
@@ -179,10 +174,9 @@ public class Scheduler {
 	///////////////////////////////////////////////////////
 	
 	private void processAddedRR(int processID) {
-		Process process = new Process(processID, quantum);
-		mProcesses.add(process);
+		mProcesses.add(processID);
 		if(mProcesses.size() == 1) {
-			mCurrentProcess = process;
+			mCurrentProcess = processID;
 			switchToProcess(processID);
 			scheduleTimerRR();
 		}
@@ -190,15 +184,15 @@ public class Scheduler {
 	
 	private void processFinishedRR(int processID) {
 		currentTime.cancel();
-		removeProcessById(processID);
+		removeProcessByID(processID);
 		
 		if (!mProcesses.isEmpty()) {
 			mCurrentProcess = mProcesses.get(0);
-			switchToProcess(mCurrentProcess.getID());
+			switchToProcess(mCurrentProcess);
 			scheduleTimerRR();
 		}
 		else {
-			mCurrentProcess = null;
+			mCurrentProcess = -1;
 		}
 	}
 	
@@ -215,11 +209,11 @@ public class Scheduler {
 					return;
 				}
 				if(mProcesses.size() > 1) {
-					if(mCurrentProcess != null) {
+					if(mCurrentProcess != -1) {
 						moveCurrentProcessToTail();
 					}
 					mCurrentProcess = mProcesses.get(0);
-					switchToProcess(mCurrentProcess.getID());
+					switchToProcess(mCurrentProcess);
 				}
 			}
 		}, 0, quantum);
@@ -234,29 +228,24 @@ public class Scheduler {
 	///////////////////////////////////////////////////////
 	
 	private void processAddedSPN(int processID) {
-		Process process = new Process(processID, quantum);
-		mProcesses.add(process);
+		mProcesses.add(processID);
 		if(mProcesses.size() == 1) {
 			switchToProcess(processID);
 		}
 	}
 	
 	private void processFinishedSPN(int processID) {
-		removeProcessById(processID);
+		removeProcessByID(processID);
 		if(!mProcesses.isEmpty()) {
 			switchToProcess(getShortestProcessID());
 		}
 	}
 	
 	private int getShortestProcessID() {
-		int shortestProcessID = -1, processID;
+		int shortestProcessID = -1;
 		long shortestServiceTime = Long.MAX_VALUE, currentServiceTime;
-		Process process;
 		
-		Iterator<Process> iterator = mProcesses.iterator();
-		while (iterator.hasNext()) {
-			process = iterator.next();
-			processID = process.getID();
+		for (Integer processID : mProcesses) {
 			currentServiceTime = processExecution.getProcessInfo(processID).totalServiceTime;
 			
 			if (currentServiceTime < shortestServiceTime) {
@@ -273,8 +262,7 @@ public class Scheduler {
 	///////////////////////////////////////////////////////
 	
 	private void processAddedSRT(int processID) {
-		Process process = new Process(processID, quantum);
-		mProcesses.add(process);
+		mProcesses.add(processID);
 		if(mProcesses.size() == 1) {
 			switchToProcess(processID);
 		}
@@ -284,21 +272,17 @@ public class Scheduler {
 	}
 	
 	private void processFinishedSRT(int processID) {
-		removeProcessById(processID);
+		removeProcessByID(processID);
 		if(!mProcesses.isEmpty()) {
 			switchToProcess(getShortestRemainingTimeID());
 		}
 	}
 	
 	private int getShortestRemainingTimeID() {
-		int shortestProcessID = -1, processID;
+		int shortestProcessID = -1;
 		long shortestRemainingTime = Long.MAX_VALUE, currentRemainingTime, currentTotalServiceTime, currentElapsedExecutionTime;
-		Process process;
 		
-		Iterator<Process> iterator = mProcesses.iterator();
-		while (iterator.hasNext()) {
-			process = iterator.next();
-			processID = process.getID();
+		for (Integer processID : mProcesses) {
 			currentTotalServiceTime = processExecution.getProcessInfo(processID).totalServiceTime;
 			currentElapsedExecutionTime = processExecution.getProcessInfo(processID).elapsedExecutionTime;
 			currentRemainingTime = currentTotalServiceTime - currentElapsedExecutionTime;
@@ -317,15 +301,14 @@ public class Scheduler {
 	///////////////////////////////////////////////////////
 	
 	private void processAddedHRRN(int processID) {
-		Process process = new Process(processID, quantum);
-		mProcesses.add(process);
+		mProcesses.add(processID);
 		if(mProcesses.size() == 1) {
 			switchToProcess(processID);
 		}
 	}
 	
 	private void processFinishedHRRN(int processID) {
-		removeProcessById(processID);
+		removeProcessByID(processID);
 		if(!mProcesses.isEmpty()) {
 			switchToProcess(getHRRNPriorityID());
 		}
@@ -339,14 +322,10 @@ public class Scheduler {
 	}
 	
 	private int getHRRNPriorityID() {
-		int priorityProcessID = -1, processID;
+		int priorityProcessID = -1;
 		long highestPriority = Long.MIN_VALUE, currentPriority;
-		Process process;
 		
-		Iterator<Process> iterator = mProcesses.iterator();
-		while (iterator.hasNext()) {
-			process = iterator.next();
-			processID = process.getID();
+		for (Integer processID : mProcesses) {
 			currentPriority = calculateHRRNPriority(processID);
 			
 			if (currentPriority > highestPriority) {
@@ -364,11 +343,10 @@ public class Scheduler {
 	///////////////////////////////////////////////////////
 	
 	private void processAddedFB(int processID) {
-		Process process = new Process(processID, quantum);
-		addToFBQueue(process, 0);
+		addToFBQueue(processID, 0);
 		processCount++;
 		if(processCount == 1) {
-			mCurrentProcess = process;
+			mCurrentProcess = processID;
 			switchToProcess(processID);
 			scheduleTimerFB();
 		}
@@ -380,8 +358,8 @@ public class Scheduler {
 		processCount--;
 				
 		getNextProcessFB();
-		if(mCurrentProcess != null) {
-			switchToProcess(mCurrentProcess.getID());
+		if(mCurrentProcess != -1) {
+			switchToProcess(mCurrentProcess);
 			scheduleTimerFB();
 		}
 	}
@@ -400,11 +378,11 @@ public class Scheduler {
 				downgradeProcess(mCurrentProcess);
 				getNextProcessFB();
 				if(processCount > 1) {	
-					if(mCurrentProcess == null) {
+					if(mCurrentProcess == -1) {
 						return;
 					}
-					System.out.println("Next process #" + mCurrentProcess.getID() + ", at level:" + currentFBLevel);
-					switchToProcess(mCurrentProcess.getID());
+					System.out.println("Next process #" + mCurrentProcess + ", at level:" + currentFBLevel);
+					switchToProcess(mCurrentProcess);
 				}
 			}
 		}, 0, quantum);
@@ -412,7 +390,7 @@ public class Scheduler {
 	
 	private void getNextProcessFB(){
 		int levelDepth = 0;
-		for(ArrayList<Process> level : feedbackQueue) {
+		for(ArrayList<Integer> level : feedbackQueue) {
 			if(!level.isEmpty()) {
 				mCurrentProcess = level.get(0);
 				currentFBLevel = levelDepth;
@@ -422,38 +400,34 @@ public class Scheduler {
 		}
 		
 		currentFBLevel = 0;
-		mCurrentProcess = null;
+		mCurrentProcess = -1;
 	}
 	
-	private void addToFBQueue(Process process, int level) {
-		feedbackQueue.get(level).add(process);
+	private void addToFBQueue(Integer processID, int level) {
+		feedbackQueue.get(level).add(processID);
 	}
 	
-	private void downgradeProcess(Process process) {
+	private void downgradeProcess(Integer processID) {
 		int nextLevel = currentFBLevel+1;
 		if(nextLevel >= FEEDBACK_QUEUE_LEVEL-1) {
 			nextLevel = FEEDBACK_QUEUE_LEVEL-1;
 		}
-		feedbackQueue.get(currentFBLevel).remove(process);
-		feedbackQueue.get(nextLevel).add(process);
+		feedbackQueue.get(currentFBLevel).remove(processID);
+		feedbackQueue.get(nextLevel).add(processID);
 	}
 	
 	private void initFBQueue() {
 		currentFBLevel = 0;
 		processCount = 0;
 		for(int i = 0; i < FEEDBACK_QUEUE_LEVEL; i++) {
-			feedbackQueue.add(new ArrayList<Process>());
+			feedbackQueue.add(new ArrayList<Integer>());
 		}
 	}
 	
 	private void removeProcessByID_FB(int processID) {
-		Process process;
-		Iterator<Process> iterator = feedbackQueue.get(currentFBLevel).iterator();
-		while (iterator.hasNext()) {
-			process = iterator.next();
-			if (process.getID() == processID) {
-				iterator.remove();
-				return;
+		for(int i = 0; i < feedbackQueue.get(currentFBLevel).size(); i++) {
+			if(feedbackQueue.get(currentFBLevel).get(i) == processID) {
+				feedbackQueue.get(currentFBLevel).remove(i);
 			}
 		}
 	}
@@ -476,26 +450,12 @@ public class Scheduler {
 		}
 		processExecution.switchToProcess(processID);
 	}
-	
-	// Get the process by ID
-	private Process getProcessById(int processId) {
-		for (Process process : mProcesses) {
-			if (process.getID() == processId) {
-				return process;
-			}
-		}
-		return null;
-	}
-	
+		
 	// Removing the process by its ID
-	private void removeProcessById(int processId) {
-		Process process;
-		Iterator<Process> iterator = mProcesses.iterator();
-		while (iterator.hasNext()) {
-			process = iterator.next();
-			if (process.getID() == processId) {
-				iterator.remove();
-				return;
+	private void removeProcessByID(int processID) {
+		for(int i = 0; i < mProcesses.size(); i++) {
+			if(mProcesses.get(i) == processID) {
+				mProcesses.remove(i);
 			}
 		}
 	}
