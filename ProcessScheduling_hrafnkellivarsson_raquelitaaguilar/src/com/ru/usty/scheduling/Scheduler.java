@@ -15,8 +15,11 @@ public class Scheduler {
 	Policy policy;
 	int quantum;
 	Timer currentTime;
+	long startSchedulingTime;
 	private final ArrayList<Process> mProcesses = new ArrayList<Process>();
-	HashMap<Integer, Long> times = new HashMap<Integer, Long>();
+	private final ArrayList<Long> turnaroundTimes = new ArrayList<Long>();
+	private final ArrayList<Long> responseTimes = new ArrayList<Long>();
+	HashMap<Integer, Long> arrivalTimes = new HashMap<Integer, Long>();
 
 	
 	public Scheduler(ProcessExecution processExecution) {
@@ -29,55 +32,65 @@ public class Scheduler {
 	public void startScheduling(Policy policy, int quantum) {
 		this.policy = policy;
 		this.quantum = quantum;
+		startSchedulingTime = System.currentTimeMillis();
+		
+		if (currentTime != null) {
+			currentTime.cancel();
+		}
+		
+		if(!turnaroundTimes.isEmpty() && !responseTimes.isEmpty()) {
+			long avgTurnaroundTime = getAvg(turnaroundTimes);
+			long avgResponseTime = getAvg(responseTimes);
+			System.out.println("======================FINISHED SCHEDULE===================");
+			System.out.println("Average turnaround time:" + avgTurnaroundTime + " ms");
+			System.out.println("Average response time:" + avgResponseTime + " ms" );
+			System.out.println("==========================================================");
+			System.out.println();
+			turnaroundTimes.clear();
+			responseTimes.clear();
+		}
+		
 
 		switch(policy) {
 		case FCFS:	//First-come-first-served
 			System.out.println("Starting new scheduling task: First-come-first-served");
-			times.clear();
-			mProcesses.clear();
 			break;
 			
 		case RR:	//Round robin
 			System.out.println("Starting new scheduling task: Round robin, quantum = " + quantum);
-			times.clear();
-			mProcesses.clear();
 			break;
 			
-		case SPN:	//Shortest process next
-			if (currentTime != null) {
-				currentTime.cancel();
-			}
+		case SPN:	//Shortest process next	
 			System.out.println("Starting new scheduling task: Shortest process next");
-			times.clear();
-			mProcesses.clear();
 			break;
 			
 		case SRT:	//Shortest remaining time
 			System.out.println("Starting new scheduling task: Shortest remaining time");
-			mProcesses.clear();
 			break;
 			
 		case HRRN:	//Highest response ratio next
 			System.out.println("Starting new scheduling task: Highest response ratio next");
-			mProcesses.clear();
 			break;
 			
 		case FB:	//Feedback
-			System.out.println("Starting new scheduling task: Feedback, quantum = " + quantum);
-			mProcesses.clear();
+			System.out.println("Starting new scheduling task: Feedback, quantum = " + quantum);			
 			break;
 		}
+		
+		arrivalTimes.clear();
+		mProcesses.clear();
+		
 	}
 
 	/**
 	 * DO NOT CHANGE DEFINITION OF OPERATION
 	 */
 	public void processAdded(int processID) {
-		
-		System.out.println("Process added, ID:" + processID);
-		
+		long arrivalTime = getCurrentAbsoluteTime();
 		// Arrival time
-		times.put(processID, System.currentTimeMillis());
+		arrivalTimes.put(processID, arrivalTime);
+		
+		System.out.println("Process #" + processID + " arrived at:" + arrivalTime);		
 		
 		switch(policy) {
 		case FCFS:	//First-come-first-served
@@ -104,15 +117,12 @@ public class Scheduler {
 	/**
 	 * DO NOT CHANGE DEFINITION OF OPERATION
 	 */
-	public void processFinished(int processID) {
+	public void processFinished(int processID) {	
+		long completionTime = getCurrentAbsoluteTime(); 
+		long turnaroundTime = completionTime - arrivalTimes.get(processID);
+		turnaroundTimes.add(turnaroundTime);
 		
-		System.out.println("Process finished, ID:" + processID);
-		// Completion time
-		long completionTime = System.currentTimeMillis(); 
-		// Turnaround time
-		long elapsed = completionTime - times.get(processID);
-		
-		System.out.println("process " + processID + " turnaround time = " + elapsed);
+		System.out.println("Process #" + processID + " finished at:" + completionTime + ", TAT:" + turnaroundTime);		
 		
 		switch(policy) {
 		case FCFS:	//First-come-first-served
@@ -380,7 +390,15 @@ public class Scheduler {
 	
 	// Switch between processes
 	private void switchToProcess(int processID) {
-		System.out.println("Switching to process ID:" + processID);
+		long switchTime = getCurrentAbsoluteTime();
+		if(processExecution.getProcessInfo(processID).elapsedExecutionTime == 0) {
+			long responseTime = switchTime - arrivalTimes.get(processID);
+			responseTimes.add(responseTime);
+			System.out.println("Starting process #" + processID + " at:" + switchTime + ", RT:" + responseTime);
+		}
+		else {
+			System.out.println("Switching to process #" + processID + " at:" + switchTime);
+		}
 		processExecution.switchToProcess(processID);
 	}
 	
@@ -405,6 +423,21 @@ public class Scheduler {
 				return;
 			}
 		}
+	}
+	
+	private long getCurrentAbsoluteTime() {
+		return System.currentTimeMillis() - startSchedulingTime;
+	}
+	
+	private long getAvg(ArrayList<Long> list) {
+		if(!list.isEmpty()) {
+			long sum = 0;
+			for(Long time : list) {
+				sum += time;
+			}
+			return sum / list.size();
+		}
+		return -1;
 	}
 	
 }
