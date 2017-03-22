@@ -187,27 +187,16 @@ public class Scheduler {
 	}
 	
 	private void processFinishedRR(int processID) {
-		int nextProcessIndex;
-		if (mCurrentProcess != null && mCurrentProcess.getID() == processID) {
-			nextProcessIndex = mProcesses.indexOf(mCurrentProcess);
-		} else {
-			Process process = getProcessById(processID);
-			nextProcessIndex = mProcesses.indexOf(process);
-		}
-		
 		removeProcessById(processID);
 		
 		if (!mProcesses.isEmpty()) {
-			if (nextProcessIndex >= mProcesses.size()) {
-				nextProcessIndex = 0;
-			}
-			
-			mCurrentProcess = mProcesses.get(nextProcessIndex);
+			mCurrentProcess = mProcesses.get(0);
 			switchToProcess(mCurrentProcess.getID());
-		} else {
+			scheduleTimerRR();
+		}
+		else {
 			mCurrentProcess = null;
 		}
-		scheduleTimerRR();
 	}
 	
 	// 
@@ -222,26 +211,19 @@ public class Scheduler {
 				if (mProcesses.isEmpty()) {
 					return;
 				}
-				if(mCurrentProcess != null){
-					getNextProcessRR();
-				} else{
+				if(mProcesses.size() > 1) {
+					if(mCurrentProcess != null) {
+						moveCurrentProcessToTail();
+					}
 					mCurrentProcess = mProcesses.get(0);
+					switchToProcess(mCurrentProcess.getID());
 				}
-				switchToProcess(mCurrentProcess.getID());
 			}
 		}, 0, quantum);
 	}
 	
-	private void getNextProcessRR(){
-		int currentIndex = mProcesses.indexOf(mCurrentProcess) + 1;
-		if (currentIndex >= mProcesses.size()) {
-			currentIndex = 0;
-		}
-		if(!mProcesses.isEmpty()){
-			mCurrentProcess = mProcesses.get(currentIndex);
-		} else{
-			mCurrentProcess = null;
-		}
+	private void moveCurrentProcessToTail() {
+		mProcesses.add(mProcesses.remove(0));
 	}
 	
 	////////////////////////////////////////////////////////
@@ -379,7 +361,6 @@ public class Scheduler {
 	///////////////////////////////////////////////////////
 	
 	private void processAddedFB(int processID) {
-		//TODO
 		Process process = new Process(processID, quantum);
 		addToFBQueue(process, 0);
 		processCount++;
@@ -390,8 +371,7 @@ public class Scheduler {
 		}
 	}
 	
-	private void processFinishedFB(int processID) {
-		//TODO		
+	private void processFinishedFB(int processID) {	
 		removeProcessByID_FB(processID);
 		processCount--;
 		
@@ -412,15 +392,16 @@ public class Scheduler {
 			public void run() {
 				if (feedbackQueue.isEmpty()) {
 					return;
-				}
-				
+				}				
 				downgradeProcess(mCurrentProcess);
 				getNextProcessFB();
-				if(mCurrentProcess == null) {
-					return;
+				if(processCount > 1) {	
+					if(mCurrentProcess == null) {
+						return;
+					}
+					System.out.println("Next process #" + mCurrentProcess.getID() + ", at level:" + currentFBLevel);
+					switchToProcess(mCurrentProcess.getID());
 				}
-				System.out.println("Next process #" + mCurrentProcess.getID() + ", at level:" + currentFBLevel);
-				switchToProcess(mCurrentProcess.getID());
 			}
 		}, 0, quantum);
 	}
@@ -447,7 +428,6 @@ public class Scheduler {
 	private void downgradeProcess(Process process) {
 		int nextLevel = currentFBLevel+1;
 		if(nextLevel >= FEEDBACK_QUEUE_LEVEL-1) {
-			System.out.println("Cannot downgrade #" + process.getID() + " further");
 			nextLevel = FEEDBACK_QUEUE_LEVEL-1;
 		}
 		feedbackQueue.get(currentFBLevel).remove(process);
